@@ -9,15 +9,17 @@ INSTALL_REQUIRES = ['numpy >= 1.11', 'pandas >= 0.18.0', 'scipy', 'xarray',
 TESTS_REQUIRE = ['pytest >= 2.7.1']
 
 setup(
-        name='replay_classification',
+        name='mst_decoder',
         version='0.3.1',
         license='GPL-3.0',
-        description=('Non-parametric categorization of replay content from'
+        description=('Non-parametric stimulus decoding from'
                      ' multiunit spiking activity'),
-        author='Eric Denovellis',
-        author_email='edeno@bu.edu',
+        author='Michael Adkins',
+        author_email='adkin099@umn.edu',
+        original_author='Eric Denovellis',
+        original_author_email='edeno@bu.edu',
         packages=find_packages(),
         install_requires=INSTALL_REQUIRES,
         tests_require=TESTS_REQUIRE,
-        url='https://github.com/Eden-Kramer-Lab/replay_classification',
+        url='https://github.com/mikeza/mst-decoder',
       )
