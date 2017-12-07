@@ -16,10 +16,11 @@ setup(
                      ' multiunit spiking activity'),
         author='Michael Adkins',
         author_email='adkin099@umn.edu',
-        original_author='Eric Denovellis',
-        original_author_email='edeno@bu.edu',
         packages=find_packages(),
         install_requires=INSTALL_REQUIRES,
         tests_require=TESTS_REQUIRE,
         url='https://github.com/mikeza/mst-decoder',
       )
+
+# original_author='Eric Denovellis',
+# original_author_email='edeno@bu.edu',
