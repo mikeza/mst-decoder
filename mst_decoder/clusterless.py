@@ -146,9 +146,9 @@ def build_joint_mark_intensity(stimulus, training_marks, tuning_bin_centers,
 
     Parameters
     ----------
-    stimulus : ndarray, shape (n_time, n_stimulus_dims)
+    stimulus : array, shape (n_time, n_stimulus_dims)
         Stimulus to decode over time
-    training_marks : ndarray, shape (n_time, n_marks)
+    training_marks : array, shape (n_time, n_marks)
         The marks over time
     tuning_bin_centers : array, shape (n_stimulus_dims, n_stimulus_bins)
         The centers of bins for stimulus
@@ -186,7 +186,7 @@ def estimate_tuning_curve(stimulus, is_spike, tuning_bin_centers,
 
     Parameters
     ----------
-    stimulus : narray, shape (n_time, n_stimulus_dims)
+    stimulus : array, shape (n_time, n_stimulus_dims)
         n-dimensional stimulus over time
     is_spike : array, shape (n_time,)
         Boolean array with True indicating spike at that time.
@@ -213,7 +213,7 @@ def estimate_ground_process_intensity(stimulus, marks, tuning_bin_centers,
 
     Parameters
     ----------
-    stimulus : narray, shape (n_time, n_stimulus_dims)
+    stimulus : array, shape (n_time, n_stimulus_dims)
         n-dimensional stimulus over time
     marks : array, shape (n_time, n_marks)
     tuning_bin_centers : array, shape (n_tuning_bins,)
@@ -240,7 +240,7 @@ def estimate_stimulus_occupancy(stimulus, tuning_bin_centers,
 
     Parameters
     ----------
-    stimulus : narray, shape (n_time, n_stimulus_dims)
+    stimulus : array, shape (n_time, n_stimulus_dims)
         n-dimensional stimulus over time
     tuning_bin_centers : array_like, shape (n_tuning_bins, n_stimulus_dims)
     tuning_std_deviation : float, optional
