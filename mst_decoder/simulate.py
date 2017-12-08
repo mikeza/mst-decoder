@@ -12,9 +12,8 @@ def simulate_linear_distance(time, track_height):
     return ((track_height / 2) * np.sin(2 * np.pi * time - (np.pi) / 2) +
             (track_height / 2))
 
-def simulate_nd_stimulus(time, bounds):
-    return ((track_height / 2) * np.sin(2 * np.pi * time - (np.pi) / 2) +
-            (track_height / 2))
+def simulate_nd_randomwalk(time, dims, delta=0.5):
+    return np.cumsum(np.random.uniform(-delta, delta, (time.shape[0], dims)), axis=0)
 
 def simulate_circular_cartesian(time, radius=50, rate=5):
     ''' Generates circular movement over time returning array of x y positions shape (n_time, 2)
