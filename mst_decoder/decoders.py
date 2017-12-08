@@ -3,6 +3,14 @@ from logging import getLogger
 
 import numpy as np
 
+# Dependencies to remove
+import xarray as xr
+
+# Dependencies for debugging
+import memory_profiler
+from time import perf_counter
+import threading
+
 logger = getLogger(__name__)
 
 from .clusterless import (build_joint_mark_intensity,
@@ -10,8 +18,7 @@ from .clusterless import (build_joint_mark_intensity,
                           estimate_marginalized_joint_mark_intensity,
                           poisson_mark_likelihood)
 from .core import (combined_likelihood, empirical_movement_transition_matrix,
-                   get_bin_grid_centers, inbound_outbound_initial_conditions,
-                   predict_state, uniform_initial_conditions)
+                   get_grid_bin_centers, predict_state, uniform_initial_conditions)
 from .utils import (atleast_2d)
 
 class ClusterlessDecoder(object):
@@ -19,22 +26,22 @@ class ClusterlessDecoder(object):
 
     Attributes
     ----------
-    stimulus : ndarray, shape (n_time, n_stimulus_dims)
+    stimulus : array, shape (n_time, n_stimulus_dims)
         Stimulus of interest 
-    spike_marks : ndarray, shape (n_signals, n_time, n_marks)
+    spike_marks : array, shape (n_signals, n_time, n_marks)
         Spike marks recorded from a multiple signals
         If a spike does not occur, rows are np.nan
-    n_stimulus_bins : ndarray, shape (n_stimulus_dims,), optional
+    n_stimulus_bins : array, shape (n_stimulus_dims,), optional
         Number of bins per stimulus dimension
     mark_std_deviation : int, optional
         Standard deviation for mark space estimation
-    tuning_std_deviation : ndarray, shape (n_stimulus_dims,), optional
+    tuning_std_deviation : array, shape (n_stimulus_dims,), optional
         Standard deviation for estimation of tuning curves for each stimulus dimension
 
     '''
 
     def __init__(self, stimulus, spike_marks, 
-                 n_stimulus_bins=61,
+                 n_stimulus_bins=31,
                  mark_std_deviation=20,
                  tuning_std_deviation=None,
                  time_bin_size=1):
@@ -94,7 +101,7 @@ class ClusterlessDecoder(object):
             ground_process_intensities.append(gpi)
 
         likelihood_kwargs = dict(
-            joint_mark_intensity_funcstions=joint_mark_intensity_funcs,
+            joint_mark_intensity_functions=joint_mark_intensity_funcs,
             ground_process_intensity=ground_process_intensities,
             time_bin_size=self.time_bin_size)
 
@@ -109,9 +116,9 @@ class ClusterlessDecoder(object):
 
         Parameters
         ----------
-        spike_marks : ndarray, shape (n_signals, n_time, n_marks)
+        spike_marks : array, shape (n_signals, n_time, n_marks)
             If spike does not occur, the row must be marked with np.nan.
-        time : ndarray, optional, shape (n_time,)
+        time : array, optional, shape (n_time,)
 
         Returns
         -------
@@ -142,3 +149,37 @@ class ClusterlessDecoder(object):
         #     spikes=spike_marks,
         #     confidence_threshold=self.confidence_threshold,
         # )
+
+    def marginalized_intensities(self):
+        joint_mark_intensity_functions = (
+            self._combined_likelihood_kwargs['likelihood_kwargs']
+            ['joint_mark_intensity_functions'])
+        mark_bin_centers = np.linspace(100, 350, 200)
+
+        marginalized_intensities = np.stack(
+            [estimate_marginalized_joint_mark_intensity(
+                mark_bin_centers, jmi.keywords['training_marks'],
+                jmi.keywords['tuning_curve'],
+                jmi.keywords['stimulus_occupancy'], self.mark_std_deviation)
+             for jmi in joint_mark_intensity_functions])
+
+        dims = ['signal', 'stimulus_bin', 'marks', 'mark_dimension']
+
+        coords = dict(
+            marks=mark_bin_centers,
+            stimulus_bin=self.tuning_bin_centers[:, 0]
+        )
+
+        return xr.DataArray(marginalized_intensities, dims=dims,
+                            coords=coords)
+
+    def plot_observation_model(self):
+        marginalized_intensities = (
+            self.marginalized_intensities().sum('mark_dimension'))
+        try:
+            return marginalized_intensities.plot(
+                row='signal', x='stimulus_bin', y='marks',
+                robust=True)
+        except ValueError:
+            return marginalized_intensities.plot(
+                row='signal', x='stimulus_bin', y='marks', robust=True)
