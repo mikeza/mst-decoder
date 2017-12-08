@@ -7,7 +7,6 @@ import numpy as np
 import xarray as xr
 
 # Dependencies for debugging
-import memory_profiler
 from time import perf_counter
 import threading
 
@@ -18,7 +17,8 @@ from .clusterless import (build_joint_mark_intensity,
                           estimate_marginalized_joint_mark_intensity,
                           poisson_mark_likelihood)
 from .core import (combined_likelihood, empirical_movement_transition_matrix,
-                   get_grid_bin_centers, predict_state, uniform_initial_conditions)
+                   bin_centers, predict_state, uniform_initial_conditions,
+                   linearized_bin_grid)
 from .utils import (atleast_2d)
 
 class ClusterlessDecoder(object):
@@ -72,9 +72,10 @@ class ClusterlessDecoder(object):
             self.tuning_std_deviation = np.repeat(self.tuning_std_deviation, 
                                                   self.n_stimulus_dims)
 
-        self.tuning_bin_centers = get_grid_bin_centers(self.tuning_bin_edges)
+        self.tuning_bin_centers = bin_centers(self.tuning_bin_edges)
+        self.tuning_bin_grid = linearized_bin_grid(self.tuning_bin_centers)
 
-        self.initial_conditions = uniform_initial_conditions(self.tuning_bin_centers)
+        self.initial_conditions = uniform_initial_conditions(self.tuning_bin_grid)
 
         self.state_transition_matrix = None
 
@@ -86,7 +87,7 @@ class ClusterlessDecoder(object):
             jmi = build_joint_mark_intensity(
                 self.stimulus,
                 signal_marks,
-                self.tuning_bin_centers,
+                self.tuning_bin_grid,
                 self.tuning_std_deviation,
                 self.mark_std_deviation)
 
@@ -95,14 +96,15 @@ class ClusterlessDecoder(object):
             gpi = estimate_ground_process_intensity(
                 self.stimulus,
                 signal_marks,
-                self.tuning_bin_centers,
+                self.tuning_bin_grid,
                 self.tuning_std_deviation)
 
             ground_process_intensities.append(gpi)
 
+        ground_process_intensity = np.stack(ground_process_intensities)
         likelihood_kwargs = dict(
             joint_mark_intensity_functions=joint_mark_intensity_funcs,
-            ground_process_intensity=ground_process_intensities,
+            ground_process_intensity=ground_process_intensity,
             time_bin_size=self.time_bin_size)
 
         self._combined_likelihood_kwargs = dict(
@@ -125,30 +127,28 @@ class ClusterlessDecoder(object):
         predicted_state : str
 
         '''
-        # results = predict_state(
-        #     spike_marks,
-        #     initial_conditions=self.initial_conditions.values,
-        #     state_transition=self.state_transition_matrix.values,
-        #     likelihood_function=combined_likelihood,
-        #     likelihood_kwargs=self._combined_likelihood_kwargs)
+        results = predict_state(
+            np.array(spike_marks),
+            initial_conditions=self.initial_conditions,
+            state_transition=None,
+            likelihood_function=combined_likelihood,
+            likelihood_kwargs=self._combined_likelihood_kwargs)
 
-        # coords = dict(
-        #     time=(time if time is not None
-        #           else np.arange(results['posterior_density'].shape[0])),
-        #     position=self.tuning_bin_centers
-        # )
+        # Generate labels for the bin coordinate in each dimension
+        coords = {'bin_dim' + str(i): ('p_stimulus_bin', self.tuning_bin_grid[:, i])
+                  for i in range(self.tuning_bin_grid.shape[1])}
 
-        # DIMS = ['time', 'position']
+        coords['time'] = (time if time is not None
+                  else np.arange(results['posterior_density'].shape[0]))
 
-        # results = xr.Dataset(
-        #     {key: (DIMS, value) for key, value in results.items()},
-        #     coords=coords)
+        DIMS = ['time', 'p_stimulus_bin']
 
-        # return DecodingResults(
-        #     results=results,
-        #     spikes=spike_marks,
-        #     confidence_threshold=self.confidence_threshold,
-        # )
+        results = xr.Dataset(
+            {key: (DIMS, value) for key, value in results.items()},
+            coords=coords)
+
+        return results
+
 
     def marginalized_intensities(self):
         joint_mark_intensity_functions = (
@@ -163,12 +163,12 @@ class ClusterlessDecoder(object):
                 jmi.keywords['stimulus_occupancy'], self.mark_std_deviation)
              for jmi in joint_mark_intensity_functions])
 
-        dims = ['signal', 'stimulus_bin', 'marks', 'mark_dimension']
+        dims = ['signal', 'p_stimulus_bin', 'marks', 'mark_dimension']
 
-        coords = dict(
-            marks=mark_bin_centers,
-            stimulus_bin=self.tuning_bin_centers[:, 0]
-        )
+        coords = {'bin_dim' + str(i): ('p_stimulus_bin', self.tuning_bin_grid[:, i])
+                    for i in range(self.tuning_bin_grid.shape[1])}
+        
+        coords['marks'] = mark_bin_centers
 
         return xr.DataArray(marginalized_intensities, dims=dims,
                             coords=coords)
@@ -177,9 +177,10 @@ class ClusterlessDecoder(object):
         marginalized_intensities = (
             self.marginalized_intensities().sum('mark_dimension'))
         try:
+            return marginalized_intensities
             return marginalized_intensities.plot(
-                row='signal', x='stimulus_bin', y='marks',
+                x='bin_dim1', y='marks',
                 robust=True)
         except ValueError:
             return marginalized_intensities.plot(
-                row='signal', x='stimulus_bin', y='marks', robust=True)
+                row='signal', x='p_stimulus_bin', y='marks', robust=True)
