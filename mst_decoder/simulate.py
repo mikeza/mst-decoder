@@ -32,7 +32,6 @@ def generate_gridded_tuning_curve_means(k, stimulus):
     n_dims = stim.shape[1]
     k_per_dim = np.floor(np.power(k, 1 / n_dims)) + 1
     mins = np.min(stim, axis=0)
-    print(mins)
     maxs = np.max(stim, axis=0)
     curve_edges = [np.linspace(mins[i], maxs[i], k_per_dim) for i in range(n_dims)]
     curve_centers = [dim_edges[:-1] + np.diff(dim_edges) / 2 for dim_edges in curve_edges]
