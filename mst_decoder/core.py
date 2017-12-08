@@ -77,6 +77,9 @@ def _get_prior(posterior, state_transition):
     '''The prior given the current posterior density and a transition
     matrix indicating the state at the next time step.
     '''
+    if state_transition is None:
+        return posterior
+
     return np.matmul(
         state_transition, posterior[..., np.newaxis]).squeeze()
 
@@ -173,16 +176,17 @@ def _fix_zero_bins(movement_bins):
     return movement_bins
 
 
-def get_grid_bin_centers(bin_edges):
+def linearized_bin_grid(bin_centers):
     '''Given the outer-points of bins as a n_dims length list of arrays of shape (n_bins_dim,)
      find their centers as a paired grid of shape (prod(n_bins_dim), n_dims)
     '''
-    bin_centers = [dim_edges[:-1] + np.diff(dim_edges) / 2 for dim_edges in bin_edges]
     grid_bin = np.meshgrid(*bin_centers)
     return np.vstack([np.ravel(a) for a in grid_bin]).transpose()
 
+def bin_centers(bin_edges):
+    return [dim_edges[:-1] + np.diff(dim_edges) / 2 for dim_edges in bin_edges]
 
 def uniform_initial_conditions(tuning_bin_centers):
     '''
     '''
-    return normalize_to_probability(np.ones_like(tuning_bin_centers))
+    return normalize_to_probability(np.ones((tuning_bin_centers.shape[0])))
