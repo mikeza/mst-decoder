@@ -44,7 +44,8 @@ class ClusterlessDecoder(object):
                  n_stimulus_bins=31,
                  mark_std_deviation=20,
                  tuning_std_deviation=None,
-                 time_bin_size=1):
+                 time_bin_size=1,
+                 speedup_factor=1):
 
         self.stimulus = atleast_2d(np.array(stimulus))
         self.spike_marks = np.array(spike_marks)
@@ -52,6 +53,7 @@ class ClusterlessDecoder(object):
         self.mark_std_deviation = mark_std_deviation
         self.tuning_std_deviation = tuning_std_deviation
         self.time_bin_size = time_bin_size
+        self.speedup_factor = speedup_factor
 
     def fit(self):
 
@@ -77,7 +79,8 @@ class ClusterlessDecoder(object):
 
         self.initial_conditions = uniform_initial_conditions(self.tuning_bin_grid)
 
-        self.state_transition_matrix = None
+        self.state_transition_matrix = empirical_movement_transition_matrix(
+            self.stimulus, self.tuning_bin_edges, self.speedup_factor)
 
         joint_mark_intensity_funcs = []
         ground_process_intensities = []
@@ -130,7 +133,7 @@ class ClusterlessDecoder(object):
         results = predict_state(
             np.array(spike_marks),
             initial_conditions=self.initial_conditions,
-            state_transition=None,
+            state_transition=self.state_transition_matrix,
             likelihood_function=combined_likelihood,
             likelihood_kwargs=self._combined_likelihood_kwargs)
 
@@ -177,9 +180,8 @@ class ClusterlessDecoder(object):
         marginalized_intensities = (
             self.marginalized_intensities().sum('mark_dimension'))
         try:
-            return marginalized_intensities
             return marginalized_intensities.plot(
-                x='bin_dim1', y='marks',
+                row='signal', x='bin_dim0', y='marks',
                 robust=True)
         except ValueError:
             return marginalized_intensities.plot(

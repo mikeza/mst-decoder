@@ -150,8 +150,8 @@ def empirical_movement_transition_matrix(place, place_bin_edges,
     place = place[:, is_condition[1:]]
 
     movement_bins, _, _ = np.histogram2d(place[0], place[1],
-                                         bins=(place_bin_edges,
-                                               place_bin_edges),
+                                         bins=(place_bin_edges[0],
+                                               place_bin_edges[0]),
                                          normed=False)
 
     smoothed_movement_bins_probability = gaussian_filter(
