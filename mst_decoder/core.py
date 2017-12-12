@@ -1,3 +1,4 @@
+
 '''Classifying sharp-wave ripple replay events from spiking activity
 (e.g. Forward vs. Reverse replay)
 
@@ -16,7 +17,6 @@ from scipy.ndimage.filters import gaussian_filter
 from scipy.stats import norm
 
 logger = getLogger(__name__)
-
 
 def predict_state(data, initial_conditions=None, state_transition=None,
                   likelihood_function=None, likelihood_kwargs={}):
@@ -78,6 +78,9 @@ def _get_prior(posterior, state_transition):
     '''The prior given the current posterior density and a transition
     matrix indicating the state at the next time step.
     '''
+    if state_transition is None:
+        return posterior
+
     return np.matmul(
         state_transition, posterior[..., np.newaxis]).squeeze()
 
@@ -174,8 +177,8 @@ def empirical_movement_transition_matrix(place, place_bin_edges,
     place = place[:, is_condition[1:]]
 
     movement_bins, _, _ = np.histogram2d(place[0], place[1],
-                                         bins=(place_bin_edges,
-                                               place_bin_edges),
+                                         bins=(place_bin_edges[0],
+                                               place_bin_edges[0]),
                                          normed=False)
 
     smoothed_movement_bins_probability = gaussian_filter(
@@ -200,45 +203,17 @@ def _fix_zero_bins(movement_bins):
     return movement_bins
 
 
-def get_bin_centers(bin_edges):
-    '''Given the outer-points of bins, find their center
+def linearized_bin_grid(bin_centers):
+    '''Given the outer-points of bins as a n_dims length list of arrays of shape (n_bins_dim,)
+     find their centers as a paired grid of shape (prod(n_bins_dim), n_dims)
     '''
-    return bin_edges[:-1] + np.diff(bin_edges) / 2
+    grid_bin = np.meshgrid(*bin_centers)
+    return np.vstack([np.ravel(a) for a in grid_bin]).transpose()
 
+def bin_centers(bin_edges):
+    return [dim_edges[:-1] + np.diff(dim_edges) / 2 for dim_edges in bin_edges]
 
-def uniform_initial_conditions(place_bin_centers):
+def uniform_initial_conditions(tuning_bin_centers):
     '''
     '''
-    return normalize_to_probability(np.ones_like(place_bin_centers))
-
-
-def inbound_outbound_initial_conditions(place_bin_centers):
-    '''Sets the prior for each state (Outbound-Forward, Outbound-Reverse,
-    Inbound-Forward, Inbound-Reverse).
-
-    Inbound states have greater weight on starting at the center arm.
-    Outbound states have weight everywhere else.
-
-    Parameters
-    ----------
-    place_bin_centers : array_like, shape=(n_parameters,)
-        Histogram bin centers of the place measure
-
-    Returns
-    -------
-    initial_conditions : array_like, shape=(n_parameters * n_states,)
-        Initial conditions for each state are stacked row-wise.
-    '''
-    place_bin_size = place_bin_centers[1] - place_bin_centers[0]
-
-    outbound_initial_conditions = normalize_to_probability(
-        norm.pdf(place_bin_centers, loc=0,
-                 scale=place_bin_size * 2))
-
-    inbound_initial_conditions = normalize_to_probability(
-        (np.max(outbound_initial_conditions) *
-         np.ones(place_bin_centers.shape)) -
-        outbound_initial_conditions)
-
-    return {'Inbound': inbound_initial_conditions,
-            'Outbound': outbound_initial_conditions}
+    return normalize_to_probability(np.ones((tuning_bin_centers.shape[0])))
