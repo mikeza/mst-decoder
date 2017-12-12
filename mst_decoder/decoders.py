@@ -15,10 +15,11 @@ logger = getLogger(__name__)
 from .clusterless import (build_joint_mark_intensity,
                           estimate_ground_process_intensity,
                           estimate_marginalized_joint_mark_intensity,
-                          poisson_mark_likelihood)
+                          poisson_mark_log_likelihood)
 from .core import (combined_likelihood, empirical_movement_transition_matrix,
                    bin_centers, predict_state, uniform_initial_conditions,
                    linearized_bin_grid)
+
 from .utils import (atleast_2d)
 
 class ClusterlessDecoder(object):
@@ -111,7 +112,7 @@ class ClusterlessDecoder(object):
             time_bin_size=self.time_bin_size)
 
         self._combined_likelihood_kwargs = dict(
-            likelihood_function=poisson_mark_likelihood,
+            likelihood_function=poisson_mark_log_likelihood,
             likelihood_kwargs=likelihood_kwargs)
 
         return self
