@@ -9,13 +9,8 @@ INSTALL_REQUIRES = ['numpy >= 1.11', 'pandas >= 0.18.0', 'scipy', 'xarray',
 TESTS_REQUIRE = ['pytest >= 2.7.1']
 
 setup(
-<<<<<<< HEAD
-        name='replay_classification',
-        version='0.3.3',
-=======
         name='mst_decoder',
-        version='0.3.1',
->>>>>>> nd-decoding
+        version='0.3.3',
         license='GPL-3.0',
         description=('Non-parametric stimulus decoding from'
                      ' multiunit spiking activity'),
